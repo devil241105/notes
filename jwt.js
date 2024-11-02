@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken';
 
 export const jwtAuthMiddleware = (req, res, next) => {
-    const authorization = req.headers.authorization;
+    const authorization = req.cookies.token;
+    console.log(authorization);
     if (!authorization) return res.status(401).json({ error: 'Token Not Found' });
 
-    const token = authorization.split(' ')[1];
+    const token = authorization;
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
@@ -18,5 +19,5 @@ export const jwtAuthMiddleware = (req, res, next) => {
 };
 
 export const generateToken = (userData) => {
-    return jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: 30000 });
+    return jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: 300 });
 };

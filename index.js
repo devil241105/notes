@@ -3,6 +3,7 @@ import pg from "pg";
 import methodOverride from "method-override";
 import bcrypt from "bcrypt";
 import { jwtAuthMiddleware, generateToken } from './jwt.js';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use(express.static("public"));
 app.set("view engine", "ejs");
 app.use(methodOverride("_method"));
+app.use(cookieParser());
 
 
 app.get("/signup", async (req, res) => {
@@ -34,23 +36,27 @@ app.get("/signup", async (req, res) => {
 });
 
 app.post("/signup", async (req, res) => {
-    const { username, password } = req.body;
-    // console.log("Received data:", req.body);
+    const { name, password } = req.body;
+    console.log("Received data:", req.body);
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const query = "INSERT INTO users (name, password) VALUES ($1, $2) RETURNING uid";
-        const values = [username, hashedPassword];
+        const values = [name, hashedPassword];
         const result = await db.query(query, values);
         const uid = result.rows[0].uid;
         const token = generateToken({ uid });
         console.log("Token is : ", token);
+        res.cookie('token', token, {
+            maxAge: 5 * 60 * 1000
+        });
+
         const tableName = `user_${uid}`;
         const createTableQuery = `
             CREATE TABLE ${tableName} (
                 id SERIAL PRIMARY KEY,
-                note_title VARCHAR(255),
-                note_content TEXT,
+                title VARCHAR(255),
+                content TEXT,
                 created_at TIMESTAMP DEFAULT NOW()
             );
         `;
@@ -97,6 +103,9 @@ app.post("/login", async (req, res) => {
         }
         const token = generateToken({ uid: user.uid });
         console.log("Token is : ", token);
+        res.cookie('token', token, {
+            maxAge: 5 * 60 * 1000
+        });
 
         res.redirect("./notes");
     } catch (err) {
@@ -125,6 +134,7 @@ app.get("/notes",jwtAuthMiddleware, async (req, res) => {
 
 app.post("/notes",jwtAuthMiddleware, async (req, res) => {
     const { title, content } = req.body;
+    console.log(req.user.uid);
     const tableName = `user_${req.user.uid}`;
     // console.log("title: ", title);
     // console.log("content: ", content);
